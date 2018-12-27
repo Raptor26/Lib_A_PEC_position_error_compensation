@@ -8,7 +8,7 @@
 
 
 /*#### |Begin| --> Секция - "Include" ########################################*/
-#include <Lib_A_PEC_position_error_compensation/Lib_A_VPE_velosity_position_estimate.h>
+#include "Lib_A_VPE_velosity_position_estimate.h"
 /*#### |End  | <-- Секция - "Include" ########################################*/
 
 
@@ -39,7 +39,7 @@ VPE_NED2ECEF(
 static void
 VPE_UpdateVelosityEstimate(
 	vpe_all_data_s *p_s,
-	__VPE_FPT__ *accNED_a);
+	__VPE_FPT__ *acc_NED_a);
 
 static void
 VPE_UpdatePositionEstimate(
@@ -188,7 +188,7 @@ VPE_GetVelosityPositionEstimate(
  * @date      27-дек-2018
  *
  * @brief    Функция устанавливает флаг готовности измерений вектора
- *           скорости от GNSS
+ *           скорости от GNSS модуля
  *
  * @param[out]	*p_s:	Указатель на структуру в которой содержатся
  * 						необходимые для обновления параметров вектора
@@ -222,7 +222,6 @@ VPE_API_SetRedyPosMeasByGNSS_flag(
 {
 	p_s->positionInECEF_s.posMeasReadyByGNSS_flag = 1u;
 }
-
 
 /*-------------------------------------------------------------------------*//**
  * @author    Mickle Isaev
@@ -280,7 +279,8 @@ VPE_API_GetPosEstimate_ECEF(
  * @author    Mickle Isaev
  * @date      27-дек-2018
  *
- * @brief    Функция обновляет текущее значение широты и долготы
+ * @brief   Функция обновляет текущее значение широты и долготы.
+ * 			Необходимо для работы функции VPE_NED2ECEF()
  *
  * @param[out]	*p_s:	Указатель на структуру в которой содержатся
  * 						необходимые для обновления параметров вектора
@@ -299,6 +299,10 @@ VPE_API_UpdateLatitudeAndLongitude(
 	p_s->lat = lat;
 	p_s->lon = lon;
 }
+/*#### |End  | <-- Секция - "Описание глобальных функций" ####################*/
+
+
+/*#### |Begin| --> Секция - "Описание локальных функций" #####################*/
 
 /*-------------------------------------------------------------------------*//**
  * @author    Mickle Isaev
@@ -310,16 +314,16 @@ VPE_API_UpdateLatitudeAndLongitude(
  * @param[out]	*p_s:	Указатель на структуру в которой содержатся
  * 						необходимые для обновления параметров вектора
  * 						скорости и вектора местоположения данные
- * @param[in]	accNED_a[3]:	Указатель на нулевой элемент массива
+ * @param[in]	acc_NED_a[3]:	Указатель на нулевой элемент массива
  * 								вектора линейных ускорений в СК
- * 								сопровождающего трехгранника
+ * 								сопровождающего трехгранника (NED)
  * 								
  * @return  None
  */
 static void
 VPE_UpdateVelosityEstimate(
 	vpe_all_data_s *p_s,
-	__VPE_FPT__ accNED_a[])
+	__VPE_FPT__ acc_NED_a[])
 {
 	/* Интегрирование вектора ускорений для получения вектора оценки скорости */
 	size_t i = 0;
@@ -328,7 +332,7 @@ VPE_UpdateVelosityEstimate(
 		p_s->velosityInNED_s.vel_a[i] +=
 			NINTEG_Trapz(
 				&p_s->velosityInNED_s.NINTEG_acc2Vel_s_a[i],
-				(__NUNTEG_FPT__) accNED_a[i]);
+				(__NUNTEG_FPT__) acc_NED_a[i]);
 	}
 }
 
@@ -429,10 +433,6 @@ VPE_CorrectPositionEstimate(
 		p_s->positionInECEF_s.compFilt_val,
 		p_s->positionInECEF_s.pos_a);
 }
-/*#### |End  | <-- Секция - "Описание глобальных функций" ####################*/
-
-
-/*#### |Begin| --> Секция - "Описание локальных функций" #####################*/
 
 /*-------------------------------------------------------------------------*//**
  * @author    Mickle Isaev
@@ -445,8 +445,8 @@ VPE_CorrectPositionEstimate(
  * @param[in]   dataMeasurements_a[3]:  Указатель на нулевой элемент массива
  * 										вектора измерений параметра
  * @param[in]   filtCoeff:	Коэффициент комплементарного фильтра. Должен быть в промежутке от 0 до 1.
- * 				@attention 	Если коэффициент равен 0, то вектор измерений не учитывается.
- * 				            Если коэффициент равен 1, то вектор оценки не учитывается.
+ * 				@attention 	Если коэффициент равен 0, то вектор оценки не учитывается.
+ * 				            Если коэффициент равен 1, то вектор измерений не учитывается.
  * @param[out]  filtered_a[3]: 	Указатель на нулевой элемент массива в
  * 								который будет записано скорректированное значение вектора
  * 								
@@ -483,7 +483,7 @@ VPE_CorrectVector(
  * 								которого необходимо выполнить в ECEF СК
  * @param[out] 	vect_ECEF_a[3]:    	Указатель на нулевой элемент массива в
  * 									который будет записана проекция вектора
- * 									vectInNED_a в ECEF СК
+ * 									vect_NED_a в ECEF СК
  * @param[in]  	lat:	Текущая широта
  * @param[in]   lon:	Текущая долгота
  * 

@@ -23,7 +23,6 @@
 
 /*==== |Begin| --> Секция - "Extern libraries" ===============================*/
 #include "Lib_A_NINTEG_numerical_integration/Lib_A_NINTEG_numerical_integration.h"
-#include "Lib_A_FILT_filters.c/Lib_A_FILT_filters.h"
 /*==== |End  | <-- Секция - "Extern libraries" ===============================*/
 /*#### |End  | <-- Секция - "Include" ########################################*/
 
@@ -54,6 +53,9 @@ typedef enum
 	VPE_NED_AXIS_NUMB,
 } pec_ned_coordinate_system_e;
 
+/**
+ * @brief	Структура, содержащая указатели на тригонометрические функции
+ */
 typedef struct
 {
 	/**
@@ -70,13 +72,16 @@ typedef struct
 
 } vpe_trigonometric_fnc_pointers_s;
 
+/**
+ * @brief	Структура, содержащая необходимые параметры для обновления
+ * 			вектора скорости в СК сопровождающего трехгранника (NED)
+ */
 typedef struct
 {
 	/**
 	 * @brief	Массив структур для численного интегрирования вектора линейных ускорений методом трапеций
 	 */
 	ninteg_trapz_s 	NINTEG_acc2Vel_s_a[VPE_NED_AXIS_NUMB];
-	FILT_comp_filt_s compFilt_s_a[VPE_NED_AXIS_NUMB];
 
 	/**
 	 * @brief	Коэффициент комплементарного фильтра для коррекции оценки вектора скорости по информации от GNSS модуля
@@ -90,18 +95,21 @@ typedef struct
 
 	/**
 	 * @brief	Флаг готовности измерений вектора скорости от GNSS модуля
-	 *  		в СК сопоровождающего трехгранника
+	 *  		в СК сЦопровождающего трехгранника
 	 */
 	size_t velMeasReadyByGNSS_flag;
 } vpe_velosity_ned_s;
 
+/**
+ * @brief	Стурктура, содержащая необходимые параметры для обновления
+ * 			вектора местоположения в связанной с Землей СК.
+ */
 typedef struct
 {
 	/**
 	 * @brief	Массив структур для численного интегрирования вектора скорости методом трапеций
 	 */
 	ninteg_trapz_s 	NINTEG_vel2Pos_s_a[VPE_ECEF_AXIS_NUMB];
-	FILT_comp_filt_s compFilt_s_a[VPE_ECEF_AXIS_NUMB];
 
 	/**
 	 * @brief	Коэффициент комплементарного фильтра для коррекции оценки вектора местоположения по информации от GNSS модуля
@@ -109,7 +117,7 @@ typedef struct
 	__VPE_FPT__ compFilt_val;
 
 	/**
-	 * @brief	Оценка местопложения в связанной с Землей СК (ECEF)
+	 * @brief	Оценка вектора местоположения в связанной с Землей СК (ECEF)
 	 */
 	__VPE_FPT__  	pos_a[3];
 
@@ -120,6 +128,10 @@ typedef struct
 	size_t posMeasReadyByGNSS_flag;
 } vpe_position_ecef_s;
 
+/**
+ * @brief 	Структура, содержащая необходимые данные для обновления
+ *         	вектора скорости и вектора местоположения
+ */
 typedef struct
 {
 	/**
@@ -147,9 +159,6 @@ typedef struct
 	 */
 	__VPE_FPT__ lon;
 
-
-
-
 } vpe_all_data_s;
 
 /**
@@ -168,7 +177,7 @@ typedef struct
 	__VPE_FPT__ positionCorrectCoeff;
 
 	/**
-	 * @brief	Период интегрирования вектора линейных укорений и вектора скорости в секундах
+	 * @brief	Период интегрирования вектора линейных ускорений и вектора скорости в секундах
 	 */
 	__VPE_FPT__ integratePeriodInSec;
 
@@ -203,9 +212,33 @@ VPE_Init(
 extern void
 VPE_GetVelosityPositionEstimate(
 	vpe_all_data_s *p_s,
-	__VPE_FPT__ accelerationInNED_a[],
-	__VPE_FPT__ velosityMeasurementsNED_a[],
-	__VPE_FPT__ positionMeasurementsECEF_a[]);
+	__VPE_FPT__ accBySens_NED_a[],
+	__VPE_FPT__ velByGNSS_NED_a[],
+	__VPE_FPT__ posByGNSS_ECEF_a[]);
+
+extern void
+VPE_API_SetReadyVelMeasByGNSS_flag(
+	vpe_all_data_s *p_s);
+
+extern void
+VPE_API_SetRedyPosMeasByGNSS_flag(
+	vpe_all_data_s *p_s);
+
+extern void
+VPE_API_GetVelEstimate_NED(
+	vpe_all_data_s *p_s,
+	__VPE_FPT__ velEstimate[]);
+
+extern void
+VPE_API_GetPosEstimate_ECEF(
+	vpe_all_data_s *p_s,
+	__VPE_FPT__ posEstimate[]);
+
+extern void
+VPE_API_UpdateLatitudeAndLongitude(
+	vpe_all_data_s *p_s,
+	__VPE_FPT__ lat,
+	__VPE_FPT__ lon);
 /*#### |End  | <-- Секция - "Прототипы глобальных функций" ###################*/
 
 
