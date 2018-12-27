@@ -1,7 +1,7 @@
-/** 
+/**
  * @file   	%<%NAME%>%.%<%EXTENSION%>%
  * @author 	Mickle Isaev
- * @version	
+ * @version
  * @date 	%<%DATE%>%, %<%TIME%>%
  * @brief
  */
@@ -57,18 +57,18 @@ typedef enum
 typedef struct
 {
 	__PEC_FPT__ (*pFncSin)(
-			__PEC_FPT__ val);
+		__PEC_FPT__ val);
 
 	__PEC_FPT__ (*pFncCos)(
-			__PEC_FPT__ val);
+		__PEC_FPT__ val);
 
 } pec_trigonometric_fnc_pointers_s;
 
 typedef struct
 {
 	ninteg_trapz_s 	acc2VelIntegrate_s_a[PEC_NED_AXIS_NUMB];
-
 	FILT_comp_filt_s compFilt_s_a[PEC_NED_AXIS_NUMB];
+	__PEC_FPT__ compFilt_val;
 
 	/* Оценка скорости в NED системе координат */
 	__PEC_FPT__  	vel_a[3];
@@ -78,6 +78,7 @@ typedef struct
 {
 	ninteg_trapz_s 	vel2PosIntegrate_s_a[PEC_ECEF_AXIS_NUMB];
 	FILT_comp_filt_s compFilt_s_a[PEC_ECEF_AXIS_NUMB];
+	__PEC_FPT__ compFilt_val;
 
 	/* Оценка местоположения в ECEF системе координат */
 	__PEC_FPT__  	pos_a[3];
@@ -96,6 +97,14 @@ typedef struct
 {
 	__PEC_FPT__ velosityCorrectCoeff;
 	__PEC_FPT__ positionCorrectCoeff;
+	__PEC_FPT__ integratePeriodInSec;
+	__PEC_FPT__ lat;
+	__PEC_FPT__ lon;
+
+	__PEC_FPT__ (*pFncSin)(
+		__PEC_FPT__ val);
+	__PEC_FPT__ (*pFncCos)(
+		__PEC_FPT__ val);
 } pec_all_data_init_s;
 /*#### |End  | <-- Секция - "Определение типов" ##############################*/
 
@@ -105,6 +114,17 @@ typedef struct
 
 
 /*#### |Begin| --> Секция - "Прототипы глобальных функций" ###################*/
+extern void
+PEC_Init(
+	pec_all_data_s *p_s,
+	pec_all_data_init_s *pInit_s);
+
+extern void
+PEC_GetVelosityPositionEstimate(
+	pec_all_data_s *p_s,
+	__PEC_FPT__ accelerationInNED_a[],
+	__PEC_FPT__ velosityMeasurementsNED_a[],
+	__PEC_FPT__ positionMeasurementsECEF_a[]);
 /*#### |End  | <-- Секция - "Прототипы глобальных функций" ###################*/
 
 
