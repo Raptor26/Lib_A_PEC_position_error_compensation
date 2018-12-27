@@ -7,8 +7,8 @@
  */
 
 
-#ifndef LIB_A_PEC_POSITION_ERROR_COMPENSATION_H_
-#define LIB_A_PEC_POSITION_ERROR_COMPENSATION_H_
+#ifndef LIB_A_VPE_VELOSITY_POSITION_ESTIMATE_H_
+#define LIB_A_VPE_VELOSITY_POSITION_ESTIMATE_H_
 
 
 /*#### |Begin| --> Секция - "Include" ########################################*/
@@ -29,8 +29,8 @@
 
 
 /*#### |Begin| --> Секция - "Определение констант" ###########################*/
-#if !defined (__PEC_FPT__)
-#error 'Please, set PEC_FPT float or double'
+#if !defined (__VPE_FPT__)
+#error 'Please, set __VPE_FPT__ float or double'
 #endif
 /*#### |End  | <-- Секция - "Определение констант" ###########################*/
 
@@ -38,73 +38,100 @@
 /*#### |Begin| --> Секция - "Определение типов" ##############################*/
 typedef enum
 {
-	PEC_ECEF_X = 0,
-	PEC_ECEF_Y,
-	PEC_ECEF_Z,
+	VPE_ECEF_X = 0,
+	VPE_ECEF_Y,
+	VPE_ECEF_Z,
 
-	PEC_ECEF_AXIS_NUMB,
+	VPE_ECEF_AXIS_NUMB,
 } pec_ecef_coordinate_system_e;
 
 typedef enum
 {
-	PEC_NED_X = 0,
-	PEC_NED_Y,
-	PEC_NED_Z,
+	VPE_NED_X = 0,
+	VPE_NED_Y,
+	VPE_NED_Z,
 
-	PEC_NED_AXIS_NUMB,
+	VPE_NED_AXIS_NUMB,
 } pec_ned_coordinate_system_e;
 
 typedef struct
 {
-	__PEC_FPT__ (*pFncSin)(
-		__PEC_FPT__ val);
+	/**
+	 * @brief	Указатель на функцию нахождения синуса
+	 */
+	__VPE_FPT__ (*pFncSin)(
+		__VPE_FPT__ val);
 
-	__PEC_FPT__ (*pFncCos)(
-		__PEC_FPT__ val);
+	/**
+	 * @brief	Указатель на функцию нахождения косинуса
+	 */
+	__VPE_FPT__ (*pFncCos)(
+		__VPE_FPT__ val);
 
-} pec_trigonometric_fnc_pointers_s;
-
-typedef struct
-{
-	ninteg_trapz_s 	acc2VelIntegrate_s_a[PEC_NED_AXIS_NUMB];
-	FILT_comp_filt_s compFilt_s_a[PEC_NED_AXIS_NUMB];
-	__PEC_FPT__ compFilt_val;
-
-	/* Оценка скорости в NED системе координат */
-	__PEC_FPT__  	vel_a[3];
-} pec_velosity_ned_s;
+} vpe_trigonometric_fnc_pointers_s;
 
 typedef struct
 {
-	ninteg_trapz_s 	vel2PosIntegrate_s_a[PEC_ECEF_AXIS_NUMB];
-	FILT_comp_filt_s compFilt_s_a[PEC_ECEF_AXIS_NUMB];
-	__PEC_FPT__ compFilt_val;
+	/**
+	 * @brief	Структура для численного интегрирования линейных ускорений методом трапеций
+	 */
+	ninteg_trapz_s 	NINTEG_acc2Vel_s_a[VPE_NED_AXIS_NUMB];
+	FILT_comp_filt_s compFilt_s_a[VPE_NED_AXIS_NUMB];
+	__VPE_FPT__ compFilt_val;
 
-	/* Оценка местоположения в ECEF системе координат */
-	__PEC_FPT__  	pos_a[3];
-} pec_position_ecef_s;
+	/**
+	 * @brief	Оценка скорости в СК сопровождающего трехгранника (NED)
+	 */
+	__VPE_FPT__  	vel_a[3];
+} vpe_velosity_ned_s;
 
 typedef struct
 {
-	pec_trigonometric_fnc_pointers_s trigFnc_s;
-	pec_velosity_ned_s 		velosityInNED_s;
-	pec_position_ecef_s 	positionInECEF_s;
-	__PEC_FPT__ lat;
-	__PEC_FPT__ lon;
+	ninteg_trapz_s 	NINTEG_vel2Pos_s_a[VPE_ECEF_AXIS_NUMB];
+	FILT_comp_filt_s compFilt_s_a[VPE_ECEF_AXIS_NUMB];
+	__VPE_FPT__ compFilt_val;
+
+	/**
+	 * @brief	Оценка местопложения в связанной с Землей СК (ECEF)
+	 */
+	__VPE_FPT__  	pos_a[3];
+} vpe_position_ecef_s;
+
+typedef struct
+{
+	/**
+	 * @brief	Структура, содержащая указатели на тригонометрические функции
+	 */
+	vpe_trigonometric_fnc_pointers_s trigFnc_s;
+	vpe_velosity_ned_s 		velosityInNED_s;
+	vpe_position_ecef_s 	positionInECEF_s;
+
+	/**
+	 * @brief	Долгота местоположения
+	 */
+	__VPE_FPT__ lat;
+
+	/**
+	 * @brief	Широта местоположения
+	 */
+	__VPE_FPT__ lon;
 } pec_all_data_s;
 
+/**
+ * @brief	Структура для инициализации "pec_all_data_s"
+ */
 typedef struct
 {
-	__PEC_FPT__ velosityCorrectCoeff;
-	__PEC_FPT__ positionCorrectCoeff;
-	__PEC_FPT__ integratePeriodInSec;
-	__PEC_FPT__ lat;
-	__PEC_FPT__ lon;
+	__VPE_FPT__ velosityCorrectCoeff;
+	__VPE_FPT__ positionCorrectCoeff;
+	__VPE_FPT__ integratePeriodInSec;
+	__VPE_FPT__ lat;
+	__VPE_FPT__ lon;
 
-	__PEC_FPT__ (*pFncSin)(
-		__PEC_FPT__ val);
-	__PEC_FPT__ (*pFncCos)(
-		__PEC_FPT__ val);
+	__VPE_FPT__ (*pFncSin)(
+		__VPE_FPT__ val);
+	__VPE_FPT__ (*pFncCos)(
+		__VPE_FPT__ val);
 } pec_all_data_init_s;
 /*#### |End  | <-- Секция - "Определение типов" ##############################*/
 
@@ -115,23 +142,23 @@ typedef struct
 
 /*#### |Begin| --> Секция - "Прототипы глобальных функций" ###################*/
 extern void
-PEC_Init(
+VPE_Init(
 	pec_all_data_s *p_s,
 	pec_all_data_init_s *pInit_s);
 
 extern void
-PEC_GetVelosityPositionEstimate(
+VPE_GetVelosityPositionEstimate(
 	pec_all_data_s *p_s,
-	__PEC_FPT__ accelerationInNED_a[],
-	__PEC_FPT__ velosityMeasurementsNED_a[],
-	__PEC_FPT__ positionMeasurementsECEF_a[]);
+	__VPE_FPT__ accelerationInNED_a[],
+	__VPE_FPT__ velosityMeasurementsNED_a[],
+	__VPE_FPT__ positionMeasurementsECEF_a[]);
 /*#### |End  | <-- Секция - "Прототипы глобальных функций" ###################*/
 
 
 /*#### |Begin| --> Секция - "Определение макросов" ###########################*/
 /*#### |End  | <-- Секция - "Определение макросов" ###########################*/
 
-#endif	/* LIB_A_PEC_POSITION_ERROR_COMPENSATION_H_ */
+#endif	/* LIB_A_VPE_VELOSITY_POSITION_ESTIMATE_H_ */
 
 /*############################################################################*/
 /*################################ END OF FILE ###############################*/
