@@ -30,7 +30,7 @@ VPE_CorrectVector(
 
 static void
 VPE_NED2ECEF(
-	pec_all_data_s *p_s,
+	vpe_all_data_s *p_s,
 	__VPE_FPT__ vectInNED_a[],
 	__VPE_FPT__ VectInECEF_a[],
 	__VPE_FPT__ lat,
@@ -38,21 +38,21 @@ VPE_NED2ECEF(
 
 static void
 VPE_UpdateVelosityEstimate(
-	pec_all_data_s *p_s,
+	vpe_all_data_s *p_s,
 	__VPE_FPT__ *pAccelerationInNED);
 
 static void
 VPE_UpdatePositionEstimate(
-	pec_all_data_s *p_s);
+	vpe_all_data_s *p_s);
 
 static void
 VPE_CorrectVelosityEstimate(
-	pec_all_data_s *p_s,
+	vpe_all_data_s *p_s,
 	__VPE_FPT__ velosityMeasurements_a[]);
 
 static void
 VPE_CorrectPositionEstimate(
-	pec_all_data_s *p_s,
+	vpe_all_data_s *p_s,
 	__VPE_FPT__ positionMeasurements_a[]);
 /*#### |End  | <-- Секция - "Прототипы локальных функций" ####################*/
 
@@ -70,13 +70,18 @@ VPE_CorrectPositionEstimate(
  */
 void
 VPE_Init(
-	pec_all_data_s *p_s,
+	vpe_all_data_s *p_s,
 	pec_all_data_init_s *pInit_s)
 {
+	/* Объявление структуры для инициализации структур интегрирования
+	 * вектора скорости и вектора местоположения */
 	ninteg_trapz_InitStruct_s 	  init_s;
 	NINTEG_Trapz_StructInit		(&init_s);
 
+	/* Отключение аккумулирования интегрированной величины */
 	init_s.accumulate_flag = NINTEG_DISABLE;
+
+	/* Установка периода интегрирования */
 	init_s.integratePeriod = pInit_s->integratePeriodInSec;
 
 	size_t i = 0;
@@ -122,53 +127,46 @@ VPE_Init(
  */
 void
 VPE_GetVelosityPositionEstimate(
-	pec_all_data_s *p_s,
-	__VPE_FPT__ accelerationInNED_a[],
-	__VPE_FPT__ velosityMeasurementsNED_a[],
-	__VPE_FPT__ positionMeasurementsECEF_a[])
+	vpe_all_data_s *p_s,
+	__VPE_FPT__ acceleration_NED_a[],
+	__VPE_FPT__ velosityMeasurements_NED_a[],
+	__VPE_FPT__ positionMeasurements_ECEF_a[])
 {
 	/* Проверка готовности измерений */
 	size_t velMeasReady_flag = 1,
 		   posMeasReady_flag = 1;
-	size_t i = 0;
-	for (i = 0; i < VPE_ECEF_AXIS_NUMB; i++)
-	{
-		if (velosityMeasurementsNED_a[i] == (__VPE_FPT__) 0.0)
-		{
-			velMeasReady_flag = 0;
-			break;
-		}
 
-		if (positionMeasurementsECEF_a[i] == (__VPE_FPT__) 0.0)
-		{
-			posMeasReady_flag = 0;
-			break;
-		}
-	}
-
-	/* Обновление оценки скорости по показаниям ускорений */
+	/* Обновление оценки скорости по показаниям вектора ускорений */
 	VPE_UpdateVelosityEstimate(
 		p_s,
-		accelerationInNED_a);
+		acceleration_NED_a);
 
-	/* Если измерения скорости готовы */
-	if (velMeasReady_flag == 1)
+	/* Если готовы показания вектора скорости от GNSS модуля */
+	if (p_s->velosityInNED_s.velMeasReadyByGNSS_flag == 1u)
 	{
 		/* Коррекция вектора скорости */
 		VPE_CorrectVelosityEstimate(
 			p_s,
-			velosityMeasurementsNED_a);
+			velosityMeasurements_NED_a);
+
+		/* Сброс флага */
+		p_s->velosityInNED_s.velMeasReadyByGNSS_flag = 0u;
 	}
 
-	/* Обновление оценки местоположения по показаниям скорости */
+	/* Обновление оценки местоположения по показаниям вектора скорости */
 	VPE_UpdatePositionEstimate(
 		p_s);
 
-	if (posMeasReady_flag == 1)
+	/* Если готовы измерения вектора местоположения от GNSS  модуля */
+	if (p_s->positionInECEF_s.posMeasReadyByGNSS_flag == 1u)
 	{
+		/* Коррекция вектора местоположения */
 		VPE_CorrectPositionEstimate(
 			p_s,
-			positionMeasurementsECEF_a);
+			positionMeasurements_ECEF_a);
+
+		/* Сброс флага */
+		p_s->positionInECEF_s.posMeasReadyByGNSS_flag = 0u;
 	}
 }
 
@@ -183,10 +181,10 @@ VPE_GetVelosityPositionEstimate(
  */
 void
 VPE_UpdateVelosityEstimate(
-	pec_all_data_s *p_s,
+	vpe_all_data_s *p_s,
 	__VPE_FPT__ *pAccelerationInNED)
 {
-	/* Интегрирование ускорений по трем осям для получения оценки скорости */
+	/* Интегрирование вектора ускорений  для получения вектора оценки скорости */
 	size_t i = 0;
 	for (i = 0; i < VPE_ECEF_AXIS_NUMB; i++)
 	{
@@ -207,10 +205,12 @@ VPE_UpdateVelosityEstimate(
  */
 void
 VPE_UpdatePositionEstimate(
-	pec_all_data_s *p_s)
+	vpe_all_data_s *p_s)
 {
-	/* Выполнение проекции вектора скорости из NED в ECEF */
+
 	__VPE_FPT__ velosityInECEF_a[VPE_ECEF_AXIS_NUMB];
+
+	/* Выполнение проекции вектора скорости из NED в ECEF */
 	VPE_NED2ECEF(
 		p_s,
 		p_s->velosityInNED_s.vel_a,
@@ -218,7 +218,8 @@ VPE_UpdatePositionEstimate(
 		p_s->lat,
 		p_s->lon);
 
-	/* Выполнение интегрирование вектора скорости в ECEF системе координат */
+	/* Выполнение интегрирования вектора скорости в ECEF СК для
+	 * получения  оценки местоположения в ECEF СК */
 	size_t i = 0;
 	for (i = 0; i < VPE_ECEF_AXIS_NUMB; i++)
 	{
@@ -240,7 +241,7 @@ VPE_UpdatePositionEstimate(
  */
 void
 VPE_CorrectVelosityEstimate(
-	pec_all_data_s *p_s,
+	vpe_all_data_s *p_s,
 	__VPE_FPT__ velosityMeasurements_a[])
 {
 	VPE_CorrectVector(
@@ -261,7 +262,7 @@ VPE_CorrectVelosityEstimate(
  */
 void
 VPE_CorrectPositionEstimate(
-	pec_all_data_s *p_s,
+	vpe_all_data_s *p_s,
 	__VPE_FPT__ positionMeasurements_a[])
 {
 	VPE_CorrectVector(
@@ -292,7 +293,7 @@ VPE_CorrectVector(
 
 void
 VPE_NED2ECEF(
-	pec_all_data_s *p_s,
+	vpe_all_data_s *p_s,
 	__VPE_FPT__ vectInNED_a[],
 	__VPE_FPT__ VectInECEF_a[],
 	__VPE_FPT__ lat,
