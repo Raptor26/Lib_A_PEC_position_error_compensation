@@ -31,15 +31,15 @@ VPE_CorrectVector(
 static void
 VPE_NED2ECEF(
 	vpe_all_data_s *p_s,
-	__VPE_FPT__ vectInNED_a[],
-	__VPE_FPT__ VectInECEF_a[],
+	__VPE_FPT__ vect_NED_a[],
+	__VPE_FPT__ vect_ECEF_a[],
 	__VPE_FPT__ lat,
 	__VPE_FPT__ lon);
 
 static void
 VPE_UpdateVelosityEstimate(
 	vpe_all_data_s *p_s,
-	__VPE_FPT__ *pAccelerationInNED);
+	__VPE_FPT__ *accNED_a);
 
 static void
 VPE_UpdatePositionEstimate(
@@ -53,7 +53,7 @@ VPE_CorrectVelosityEstimate(
 static void
 VPE_CorrectPositionEstimate(
 	vpe_all_data_s *p_s,
-	__VPE_FPT__ positionMeasurements_a[]);
+	__VPE_FPT__ posByGNSS_ECEF_a[]);
 /*#### |End  | <-- Секция - "Прототипы локальных функций" ####################*/
 
 
@@ -63,10 +63,13 @@ VPE_CorrectPositionEstimate(
  * @author    Mickle Isaev
  * @date      25-дек-2018
  *
- * @brief    { function_description }
+ * @brief    Функция выполняет инициализацию структуры типа "vpe_all_data_s"
+ *           по исходным данным, находящимся в структуре типа "pec_all_data_init_s"
  *
- * @param    p_s        P s
- * @param    pInit_s    Инициализировать с
+ * @param[out] 	*p_s:  		Указатель на инициализируемую структуру
+ * @param[in]  	*pInit_s:   Указатель на структуру с исходными параметрами
+ * 
+ * @return  None
  */
 void
 VPE_Init(
@@ -118,28 +121,38 @@ VPE_Init(
  * @author    Mickle Isaev
  * @date      25-дек-2018
  *
- * @brief    { function_description }
+ * @brief    Функция выполняет обновление оценки вектора скорости в СК
+ *           сопровождающего трехгранника (NED) и оценку вектора
+ *           местоположения в СК, связанной с Землей (ECFE)
  *
- * @param    p_s                           P s
- * @param    accelerationInNED_a           Ускорение в нед
- * @param    velosityMeasurementsNED_a     Измерения скорости нед
- * @param    positionMeasurementsECEF_a    Измерения положения ecef a
+ * @param[in,out]	*p_s:	Указатель на структуру в которой содержатся
+ * 							необходимые для обновления параметров вектора
+ * 							скорости и вектора местоположения данные
+ * @param[in]	accBySens_NED_a[3]:	Указатель на нулевой элемент массива
+ * 									вектора линейных ускорений в СК
+ * 									сопровождающего	трехгранника (NED)
+ * @param[in]   velByGNSS_NED_a[3]:	Указатель на нулевой элемент массива
+ * 									измерения вектора скорости от GNSS модуля
+ * 									в системе координат сопровождающего
+ * 									трехгранника (NED)
+ * @param[in]   posByGNSS_ECEF_a[3]:	Указатель на нулевой элемент массива
+ * 										измерения вектора местоположения от
+ * 										GNSS модуля в системе координат,
+ * 										связанной с Землёй (ECEF)
+ * 
+ * @return  None
  */
 void
 VPE_GetVelosityPositionEstimate(
 	vpe_all_data_s *p_s,
-	__VPE_FPT__ acceleration_NED_a[],
-	__VPE_FPT__ velosityMeasurements_NED_a[],
-	__VPE_FPT__ positionMeasurements_ECEF_a[])
+	__VPE_FPT__ accBySens_NED_a[],
+	__VPE_FPT__ velByGNSS_NED_a[],
+	__VPE_FPT__ posByGNSS_ECEF_a[])
 {
-	/* Проверка готовности измерений */
-	size_t velMeasReady_flag = 1,
-		   posMeasReady_flag = 1;
-
 	/* Обновление оценки скорости по показаниям вектора ускорений */
 	VPE_UpdateVelosityEstimate(
 		p_s,
-		acceleration_NED_a);
+		accBySens_NED_a);
 
 	/* Если готовы показания вектора скорости от GNSS модуля */
 	if (p_s->velosityInNED_s.velMeasReadyByGNSS_flag == 1u)
@@ -147,7 +160,7 @@ VPE_GetVelosityPositionEstimate(
 		/* Коррекция вектора скорости */
 		VPE_CorrectVelosityEstimate(
 			p_s,
-			velosityMeasurements_NED_a);
+			velByGNSS_NED_a);
 
 		/* Сброс флага */
 		p_s->velosityInNED_s.velMeasReadyByGNSS_flag = 0u;
@@ -163,7 +176,7 @@ VPE_GetVelosityPositionEstimate(
 		/* Коррекция вектора местоположения */
 		VPE_CorrectPositionEstimate(
 			p_s,
-			positionMeasurements_ECEF_a);
+			posByGNSS_ECEF_a);
 
 		/* Сброс флага */
 		p_s->positionInECEF_s.posMeasReadyByGNSS_flag = 0u;
@@ -172,26 +185,150 @@ VPE_GetVelosityPositionEstimate(
 
 /*-------------------------------------------------------------------------*//**
  * @author    Mickle Isaev
- * @date      25-дек-2018
+ * @date      27-дек-2018
  *
- * @brief    { function_description }
+ * @brief    Функция устанавливает флаг готовности измерений вектора
+ *           скорости от GNSS
  *
- * @param    p_s                   P s
- * @param    pAccelerationInNED    Ускорение в нед
+ * @param[out]	*p_s:	Указатель на структуру в которой содержатся
+ * 						необходимые для обновления параметров вектора
+ * 						скорости и вектора местоположения данные
+ * 						
+ * @return  None
  */
 void
+VPE_API_SetReadyVelMeasByGNSS_flag(
+	vpe_all_data_s *p_s)
+{
+	p_s->velosityInNED_s.velMeasReadyByGNSS_flag = 1u;
+}
+
+/*-------------------------------------------------------------------------*//**
+ * @author    Mickle Isaev
+ * @date      27-дек-2018
+ *
+ * @brief    Функция устанавливает флаг готовности измерений вектора
+ *           местоположения от GNSS
+ *
+ * @param[out]	*p_s:	Указатель на структуру в которой содержатся
+ * 						необходимые для обновления параметров вектора
+ * 						скорости и вектора местоположения данные
+ * 						
+ * @return  None
+ */
+void
+VPE_API_SetRedyPosMeasByGNSS_flag(
+	vpe_all_data_s *p_s)
+{
+	p_s->positionInECEF_s.posMeasReadyByGNSS_flag = 1u;
+}
+
+
+/*-------------------------------------------------------------------------*//**
+ * @author    Mickle Isaev
+ * @date      27-дек-2018
+ *
+ * @brief    Функция выполняет копирование крайнего значения оценки
+ *           вектора скорости в массив "velEstimate"
+ *
+ * @param[out]	*p_s:	Указатель на структуру в которой содержатся
+ * 						необходимые для обновления параметров вектора
+ * 						скорости и вектора местоположения данные
+ * @param[out] 	velEstimate[3]:	Указатель на нулевой элемент массива в который
+ * 								будет записано крайнее значение оценки вектора
+ * 								скорости в СК сопровождающего трехгранника (NED)
+ * 								
+ * @return  None
+ */
+void
+VPE_API_GetVelEstimate_NED(
+	vpe_all_data_s *p_s,
+	__VPE_FPT__ velEstimate[])
+{
+	velEstimate[VPE_NED_X] = p_s->velosityInNED_s.vel_a[VPE_NED_X];
+	velEstimate[VPE_NED_Y] = p_s->velosityInNED_s.vel_a[VPE_NED_Y];
+	velEstimate[VPE_NED_Z] = p_s->velosityInNED_s.vel_a[VPE_NED_Z];
+}
+
+/*-------------------------------------------------------------------------*//**
+ * @author    Mickle Isaev
+ * @date      27-дек-2018
+ *
+ * @brief    Функция выполняет копирование крайнего значения оценки
+ *           вектора местоположения в массив "posEstimate"
+ *
+ * @param[out]	*p_s:	Указатель на структуру в которой содержатся
+ * 						необходимые для обновления параметров вектора
+ * 						скорости и вектора местоположения данные
+ * @param[out] 	posEstimate[3]:	Указатель на нулевой элемент массива в который
+ * 								будет записано крайнее значение оценки вектора
+ * 								местоположения в связанной с Землей СК (ECEF)
+ * 												
+ * @return  None
+ */
+void
+VPE_API_GetPosEstimate_ECEF(
+	vpe_all_data_s *p_s,
+	__VPE_FPT__ posEstimate[])
+{
+	posEstimate[VPE_ECEF_X] = p_s->positionInECEF_s.pos_a[VPE_ECEF_X];
+	posEstimate[VPE_ECEF_Y] = p_s->positionInECEF_s.pos_a[VPE_ECEF_Y];
+	posEstimate[VPE_ECEF_Z] = p_s->positionInECEF_s.pos_a[VPE_ECEF_Z];
+}
+
+/*-------------------------------------------------------------------------*//**
+ * @author    Mickle Isaev
+ * @date      27-дек-2018
+ *
+ * @brief    Функция обновляет текущее значение широты и долготы
+ *
+ * @param[out]	*p_s:	Указатель на структуру в которой содержатся
+ * 						необходимые для обновления параметров вектора
+ * 						скорости и вектора местоположения данные
+ * @param[in]    lat:    Текущая широта
+ * @param[in]    lon:    Текущая долгота
+ * 
+ * @return  None
+ */
+void
+VPE_API_UpdateLatitudeAndLongitude(
+	vpe_all_data_s *p_s,
+	__VPE_FPT__ lat,
+	__VPE_FPT__ lon)
+{
+	p_s->lat = lat;
+	p_s->lon = lon;
+}
+
+/*-------------------------------------------------------------------------*//**
+ * @author    Mickle Isaev
+ * @date      25-дек-2018
+ *
+ * @brief    Функция выполняет обновление оценки вектора скорости по
+ *           измерениям линейных ускорений
+ *
+ * @param[out]	*p_s:	Указатель на структуру в которой содержатся
+ * 						необходимые для обновления параметров вектора
+ * 						скорости и вектора местоположения данные
+ * @param[in]	accNED_a[3]:	Указатель на нулевой элемент массива
+ * 								вектора линейных ускорений в СК
+ * 								сопровождающего трехгранника
+ * 								
+ * @return  None
+ */
+static void
 VPE_UpdateVelosityEstimate(
 	vpe_all_data_s *p_s,
-	__VPE_FPT__ *pAccelerationInNED)
+	__VPE_FPT__ accNED_a[])
 {
-	/* Интегрирование вектора ускорений  для получения вектора оценки скорости */
+	/* Интегрирование вектора ускорений для получения вектора оценки скорости */
 	size_t i = 0;
 	for (i = 0; i < VPE_ECEF_AXIS_NUMB; i++)
 	{
 		p_s->velosityInNED_s.vel_a[i] +=
 			NINTEG_Trapz(
 				&p_s->velosityInNED_s.NINTEG_acc2Vel_s_a[i],
-				(__NUNTEG_FPT__) * pAccelerationInNED++);
+				(__NUNTEG_FPT__) accNED_a[i]);
 	}
 }
 
@@ -199,11 +336,16 @@ VPE_UpdateVelosityEstimate(
  * @author    Mickle Isaev
  * @date      25-дек-2018
  *
- * @brief    { function_description }
+ * @brief    Функция выполняет обновление оценки вектора местоположения по
+ *           оценки вектора скорости
  *
- * @param    p_s    P s
+ * @param[out]	*p_s:	Указатель на структуру в которой содержатся
+ * 						необходимые для обновления параметров вектора
+ * 						скорости и вектора местоположения данные
+ * 						
+ * @return  None
  */
-void
+static void
 VPE_UpdatePositionEstimate(
 	vpe_all_data_s *p_s)
 {
@@ -234,19 +376,27 @@ VPE_UpdatePositionEstimate(
  * @author    Mickle Isaev
  * @date      25-дек-2018
  *
- * @brief    { function_description }
+ * @brief    Функция выполняет коррекцию оценки вектора скорости с помощью
+ *           измерений вектора скорости от GNSS модуля
  *
- * @param    p_s                       P s
- * @param    velosityMeasurements_a    Измерения скорости
+ * @param[in,out]	*p_s:	Указатель на структуру в которой содержатся
+ * 							необходимые для обновления параметров вектора
+ * 						 	скорости и вектора местоположения данные
+ * @param[in]   velByGNSS_NED_a[3]:	Указатель на нулевой элемент массива
+ * 									измерения вектора скорости от GNSS модуля
+ * 									в системе координат сопровождающего
+ * 									трехгранника (NED)
+ * 									
+ * @return  None
  */
-void
+static void
 VPE_CorrectVelosityEstimate(
 	vpe_all_data_s *p_s,
-	__VPE_FPT__ velosityMeasurements_a[])
+	__VPE_FPT__ velByGNSS_NED_a[])
 {
 	VPE_CorrectVector(
 		p_s->velosityInNED_s.vel_a,
-		velosityMeasurements_a,
+		velByGNSS_NED_a,
 		p_s->velosityInNED_s.compFilt_val,
 		p_s->velosityInNED_s.vel_a);
 }
@@ -255,19 +405,27 @@ VPE_CorrectVelosityEstimate(
  * @author    Mickle Isaev
  * @date      25-дек-2018
  *
- * @brief    { function_description }
+ * @brief    Функция выполняет коррекцию оценки вектора местоположения с помощью
+ *           измерений вектора местоположения от GNSS модуля
  *
- * @param    p_s                       P s
- * @param    positionMeasurements_a    Измерения положения а
+ * @param[in,out]	*p_s:	Указатель на структуру в которой содержатся
+ * 							необходимые для обновления параметров вектора
+ * 						 	скорости и вектора местоположения данные
+ * @param[in]   posByGNSS_ECEF_a[3]:	Указатель на нулевой элемент массива
+ * 										измерения вектора местоположения от
+ * 										GNSS модуля в системе координат,
+ * 										связанной с Землёй (ECEF)
+ * 										
+ * @return  None
  */
-void
+static void
 VPE_CorrectPositionEstimate(
 	vpe_all_data_s *p_s,
-	__VPE_FPT__ positionMeasurements_a[])
+	__VPE_FPT__ posByGNSS_ECEF_a[])
 {
 	VPE_CorrectVector(
 		p_s->positionInECEF_s.pos_a,
-		positionMeasurements_a,
+		posByGNSS_ECEF_a,
 		p_s->positionInECEF_s.compFilt_val,
 		p_s->positionInECEF_s.pos_a);
 }
@@ -275,7 +433,26 @@ VPE_CorrectPositionEstimate(
 
 
 /*#### |Begin| --> Секция - "Описание локальных функций" #####################*/
-void
+
+/*-------------------------------------------------------------------------*//**
+ * @author    Mickle Isaev
+ * @date      27-дек-2018
+ *
+ * @brief    Функция реализует комплементарный фильтр для 3-х мерного вектора
+ *
+ * @param[in]	dataEstimate_a[3]:    	Указатель на нулевой элемент массива
+ * 										вектора оценки параметра
+ * @param[in]   dataMeasurements_a[3]:  Указатель на нулевой элемент массива
+ * 										вектора измерений параметра
+ * @param[in]   filtCoeff:	Коэффициент комплементарного фильтра. Должен быть в промежутке от 0 до 1.
+ * 				@attention 	Если коэффициент равен 0, то вектор измерений не учитывается.
+ * 				            Если коэффициент равен 1, то вектор оценки не учитывается.
+ * @param[out]  filtered_a[3]: 	Указатель на нулевой элемент массива в
+ * 								который будет записано скорректированное значение вектора
+ * 								
+ * @return  None
+ */
+static void
 VPE_CorrectVector(
 	__VPE_FPT__ dataEstimate_a[],
 	__VPE_FPT__ dataMeasurements_a[],
@@ -291,29 +468,50 @@ VPE_CorrectVector(
 	}
 }
 
-void
+/*-------------------------------------------------------------------------*//**
+ * @author    Mickle Isaev
+ * @date      27-дек-2018
+ *
+ * @brief    Функция выполняет проекцию вектора из СК препровождающего
+ *           трехгранника (NED) в систему координат, связанную с Землей (ECEF)
+ *
+ * @param[in]	*p_s:	Указатель на структуру в которой содержатся
+ * 							необходимые для обновления параметров вектора
+ * 						 	скорости и вектора местоположения данные
+ * @param[in]  	vect_NED_a[3]:	Указатель на нулевой элемент массива
+ * 								в котором содержится вектор, проекцию
+ * 								которого необходимо выполнить в ECEF СК
+ * @param[out] 	vect_ECEF_a[3]:    	Указатель на нулевой элемент массива в
+ * 									который будет записана проекция вектора
+ * 									vectInNED_a в ECEF СК
+ * @param[in]  	lat:	Текущая широта
+ * @param[in]   lon:	Текущая долгота
+ * 
+ * @return  None
+ */
+static void
 VPE_NED2ECEF(
 	vpe_all_data_s *p_s,
-	__VPE_FPT__ vectInNED_a[],
-	__VPE_FPT__ VectInECEF_a[],
+	__VPE_FPT__ vect_NED_a[],
+	__VPE_FPT__ vect_ECEF_a[],
 	__VPE_FPT__ lat,
 	__VPE_FPT__ lon)
 {
 	__VPE_FPT__ temp =
-		p_s->trigFnc_s.pFncCos(lat) * (-vectInNED_a[VPE_NED_Z])
-		- (p_s->trigFnc_s.pFncSin(lat) * vectInNED_a[VPE_NED_X]);
+		p_s->trigFnc_s.pFncCos(lat) * (-vect_NED_a[VPE_NED_Z])
+		- (p_s->trigFnc_s.pFncSin(lat) * vect_NED_a[VPE_NED_X]);
 
-	VectInECEF_a[VPE_ECEF_X] =
+	vect_ECEF_a[VPE_ECEF_X] =
 		(p_s->trigFnc_s.pFncCos(lon) * temp )
-		- (p_s->trigFnc_s.pFncSin(lon) * vectInNED_a[VPE_NED_Y]);
+		- (p_s->trigFnc_s.pFncSin(lon) * vect_NED_a[VPE_NED_Y]);
 
-	VectInECEF_a[VPE_ECEF_Y] =
+	vect_ECEF_a[VPE_ECEF_Y] =
 		(p_s->trigFnc_s.pFncSin(lon) * temp )
-		- (p_s->trigFnc_s.pFncCos(lon) * vectInNED_a[VPE_NED_Y]);
+		- (p_s->trigFnc_s.pFncCos(lon) * vect_NED_a[VPE_NED_Y]);
 
-	VectInECEF_a[VPE_ECEF_Z] =
-		p_s->trigFnc_s.pFncSin(lat) * (-vectInNED_a[VPE_NED_Z])
-		+  p_s->trigFnc_s.pFncCos(lat) * vectInNED_a[VPE_NED_X];
+	vect_ECEF_a[VPE_ECEF_Z] =
+		p_s->trigFnc_s.pFncSin(lat) * (-vect_NED_a[VPE_NED_Z])
+		+  p_s->trigFnc_s.pFncCos(lat) * vect_NED_a[VPE_NED_X];
 }
 /*#### |End  | <-- Секция - "Описание локальных функций" #####################*/
 
