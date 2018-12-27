@@ -353,7 +353,6 @@ static void
 VPE_UpdatePositionEstimate(
 	vpe_all_data_s *p_s)
 {
-
 	__VPE_FPT__ velosityInECEF_a[VPE_ECEF_AXIS_NUMB];
 
 	/* Выполнение проекции вектора скорости из NED в ECEF */

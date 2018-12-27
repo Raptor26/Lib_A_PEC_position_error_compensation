@@ -13,6 +13,9 @@
 
 !.gitignore
 
+!/doxygen/
+!/doxygen/Doxyfile
+
 
 
 
