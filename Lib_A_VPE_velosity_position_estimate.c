@@ -73,8 +73,8 @@ VPE_CorrectPositionEstimate(
  */
 void
 VPE_Init(
-	vpe_all_data_s *p_s,
-	pec_all_data_init_s *pInit_s)
+	vpe_all_data_s 		*p_s,
+	vpe_all_data_init_s *pInit_s)
 {
 	/* Объявление структуры для инициализации структур интегрирования
 	 * вектора скорости и вектора местоположения */
@@ -114,6 +114,13 @@ VPE_Init(
 	/* Указатели на функции нахождения синуса и косинуса */
 	p_s->trigFnc_s.pFncCos = pInit_s->pFncCos;
 	p_s->trigFnc_s.pFncSin = pInit_s->pFncSin;
+}
+
+void
+VPE_StructInit(
+	vpe_all_data_init_s *pInit_s)
+{
+
 }
 
 

@@ -101,7 +101,7 @@ typedef struct
 } vpe_velosity_ned_s;
 
 /**
- * @brief	Стурктура, содержащая необходимые параметры для обновления
+ * @brief	Структура, содержащая необходимые параметры для обновления
  * 			вектора местоположения в связанной с Землей СК.
  */
 typedef struct
@@ -112,7 +112,8 @@ typedef struct
 	ninteg_trapz_s 	NINTEG_vel2Pos_s_a[VPE_ECEF_AXIS_NUMB];
 
 	/**
-	 * @brief	Коэффициент комплементарного фильтра для коррекции оценки вектора местоположения по информации от GNSS модуля
+	 * @brief	Коэффициент комплементарного фильтра для коррекции оценки вектора 
+	 *        	местоположения по информации от GNSS модуля
 	 */
 	__VPE_FPT__ compFilt_val;
 
@@ -162,7 +163,7 @@ typedef struct
 } vpe_all_data_s;
 
 /**
- * @brief	Структура для инициализации "pec_all_data_s"
+ * @brief	Структура для инициализации "vpe_all_data_s"
  */
 typedef struct
 {
@@ -195,7 +196,10 @@ typedef struct
 		__VPE_FPT__ val);
 	__VPE_FPT__ (*pFncCos)(
 		__VPE_FPT__ val);
-} pec_all_data_init_s;
+
+	/* Начальное значение вектора местоположения */
+	__VPE_FPT__ pos_ECEF_a[VPE_ECEF_AXIS_NUMB];
+} vpe_all_data_init_s;
 /*#### |End  | <-- Секция - "Определение типов" ##############################*/
 
 
@@ -207,7 +211,7 @@ typedef struct
 extern void
 VPE_Init(
 	vpe_all_data_s *p_s,
-	pec_all_data_init_s *pInit_s);
+	vpe_all_data_init_s *pInit_s);
 
 extern void
 VPE_GetVelosityPositionEstimate(
