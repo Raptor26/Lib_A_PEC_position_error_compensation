@@ -94,6 +94,13 @@ typedef struct
 	__VPE_FPT__  	vel_a[3];
 
 	/**
+	 * @brief	Инструментальные погрешности в векторе скорости (NED)
+	 */
+	__VPE_FPT__		velBias_a[3];
+
+	__VPE_FPT__ 	velBiasCorrCoeff;
+
+	/**
 	 * @brief	Флаг готовности измерений вектора скорости от GNSS модуля
 	 *  		в СК сЦопровождающего трехгранника
 	 */
@@ -112,7 +119,7 @@ typedef struct
 	ninteg_trapz_s 	NINTEG_vel2Pos_s_a[VPE_ECEF_AXIS_NUMB];
 
 	/**
-	 * @brief	Коэффициент комплементарного фильтра для коррекции оценки вектора 
+	 * @brief	Коэффициент комплементарного фильтра для коррекции оценки вектора
 	 *        	местоположения по информации от GNSS модуля
 	 */
 	__VPE_FPT__ compFilt_val;
@@ -121,6 +128,10 @@ typedef struct
 	 * @brief	Оценка вектора местоположения в связанной с Землей СК (ECEF)
 	 */
 	__VPE_FPT__  	pos_a[3];
+
+	__VPE_FPT__		posBias_a[3];
+
+	__VPE_FPT__		posBiasCorrCoeff;
 
 	/**
 	 * @brief	Флаг готовности измерений вектора местоположения от GNSS модуля
@@ -199,6 +210,10 @@ typedef struct
 
 	/* Начальное значение вектора местоположения */
 	__VPE_FPT__ pos_ECEF_a[VPE_ECEF_AXIS_NUMB];
+
+	__VPE_FPT__ velBiasCorrCoeff;
+
+	__VPE_FPT__ posBiasCorrCoeff;
 } vpe_all_data_init_s;
 /*#### |End  | <-- Секция - "Определение типов" ##############################*/
 
@@ -211,6 +226,10 @@ typedef struct
 extern void
 VPE_Init(
 	vpe_all_data_s *p_s,
+	vpe_all_data_init_s *pInit_s);
+
+extern void
+VPE_StructInit(
 	vpe_all_data_init_s *pInit_s);
 
 extern void
