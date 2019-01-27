@@ -68,13 +68,13 @@ VPE_CorrectPositionEstimate(
  *
  * @param[out] 	*p_s:  		Указатель на инициализируемую структуру
  * @param[in]  	*pInit_s:   Указатель на структуру с исходными параметрами
- * 
+ *
  * @return  None
  */
 void
 VPE_Init(
-	vpe_all_data_s *p_s,
-	pec_all_data_init_s *pInit_s)
+	vpe_all_data_s 		*p_s,
+	vpe_all_data_init_s *pInit_s)
 {
 	/* Объявление структуры для инициализации структур интегрирования
 	 * вектора скорости и вектора местоположения */
@@ -99,6 +99,8 @@ VPE_Init(
 		NINTEG_Trapz_Init(
 			&p_s->positionInECEF_s.NINTEG_vel2Pos_s_a[i],
 			&init_s);
+
+		p_s->positionInECEF_s.pos_a[i] = pInit_s->pos_ECEF_a[i];
 	}
 
 	/* Присваивание значений коэффициентов для комплементарного фильтра */
@@ -106,6 +108,13 @@ VPE_Init(
 		pInit_s->velosityCorrectCoeff;
 	p_s->positionInECEF_s.compFilt_val =
 		pInit_s->positionCorrectCoeff;
+
+	/* Присваивание значений коэффициентам для коррекции инструментальных
+	 * погрешностей датчиков */
+	p_s->velosityInNED_s.velBiasCorrCoeff =
+		pInit_s->velBiasCorrCoeff;
+	p_s->positionInECEF_s.posBiasCorrCoeff =
+		pInit_s->posBiasCorrCoeff;
 
 	/* Начальные значения широты и долготы */
 	p_s->lat = pInit_s->lat;
@@ -116,6 +125,37 @@ VPE_Init(
 	p_s->trigFnc_s.pFncSin = pInit_s->pFncSin;
 }
 
+
+/*-------------------------------------------------------------------------*//**
+ * @author    Mickle Isaev
+ * @date      06-янв-2019
+ *
+ * @brief    Функция инициализирует структуру типа "vpe_all_data_init_s" 
+ *           значениями по умолчанию
+ *
+ * @param[in]  	*pInit_s:   Указатель на структуру с исходными параметрами
+ * 
+ * @return  None
+ */
+void
+VPE_StructInit(
+	vpe_all_data_init_s *pInit_s)
+{
+	pInit_s->integratePeriodInSec 	= (__VPE_FPT__) 0.0;
+	pInit_s->lat 					= (__VPE_FPT__) 0.0;
+	pInit_s->lon 					= (__VPE_FPT__) 0.0;
+	pInit_s->pFncCos 				= NULL;
+	pInit_s->pFncSin 				= NULL;
+	pInit_s->posBiasCorrCoeff 		= (__VPE_FPT__) 0.0;
+
+	pInit_s->pos_ECEF_a[VPE_ECEF_X] = (__VPE_FPT__) 0.0;
+	pInit_s->pos_ECEF_a[VPE_ECEF_Y] = (__VPE_FPT__) 0.0;
+	pInit_s->pos_ECEF_a[VPE_ECEF_Z] = (__VPE_FPT__) 0.0;
+
+	pInit_s->positionCorrectCoeff 	= (__VPE_FPT__) 0.0;
+	pInit_s->velBiasCorrCoeff 		= (__VPE_FPT__) 0.0;
+	pInit_s->velosityCorrectCoeff 	= (__VPE_FPT__) 0.0;
+}
 
 /*-------------------------------------------------------------------------*//**
  * @author    Mickle Isaev
@@ -139,7 +179,7 @@ VPE_Init(
  * 										измерения вектора местоположения от
  * 										GNSS модуля в системе координат,
  * 										связанной с Землёй (ECEF)
- * 
+ *
  * @return  None
  */
 void
@@ -149,13 +189,21 @@ VPE_GetVelosityPositionEstimate(
 	__VPE_FPT__ velByGNSS_NED_a[],
 	__VPE_FPT__ posByGNSS_ECEF_a[])
 {
+	if (accBySens_NED_a[0] != NAN
+			&& accBySens_NED_a[1] != NAN
+			&& accBySens_NED_a[2] != NAN)
+	{
 	/* Обновление оценки скорости по показаниям вектора ускорений */
 	VPE_UpdateVelosityEstimate(
 		p_s,
 		accBySens_NED_a);
+	}
 
 	/* Если готовы показания вектора скорости от GNSS модуля */
-	if (p_s->velosityInNED_s.velMeasReadyByGNSS_flag == 1u)
+	if (p_s->velosityInNED_s.velMeasReadyByGNSS_flag == 1u
+			&& velByGNSS_NED_a[0] != NAN
+			&& velByGNSS_NED_a[1] != NAN
+			&& velByGNSS_NED_a[2] != NAN)
 	{
 		/* Коррекция вектора скорости */
 		VPE_CorrectVelosityEstimate(
@@ -171,7 +219,10 @@ VPE_GetVelosityPositionEstimate(
 		p_s);
 
 	/* Если готовы измерения вектора местоположения от GNSS  модуля */
-	if (p_s->positionInECEF_s.posMeasReadyByGNSS_flag == 1u)
+	if (p_s->positionInECEF_s.posMeasReadyByGNSS_flag == 1u
+			&& posByGNSS_ECEF_a[0] != NAN
+			&& posByGNSS_ECEF_a[1] != NAN
+			&& posByGNSS_ECEF_a[2] != NAN)
 	{
 		/* Коррекция вектора местоположения */
 		VPE_CorrectPositionEstimate(
@@ -193,7 +244,7 @@ VPE_GetVelosityPositionEstimate(
  * @param[out]	*p_s:	Указатель на структуру в которой содержатся
  * 						необходимые для обновления параметров вектора
  * 						скорости и вектора местоположения данные
- * 						
+ *
  * @return  None
  */
 void
@@ -213,7 +264,7 @@ VPE_API_SetReadyVelMeasByGNSS_flag(
  * @param[out]	*p_s:	Указатель на структуру в которой содержатся
  * 						необходимые для обновления параметров вектора
  * 						скорости и вектора местоположения данные
- * 						
+ *
  * @return  None
  */
 void
@@ -236,7 +287,7 @@ VPE_API_SetRedyPosMeasByGNSS_flag(
  * @param[out] 	velEstimate[3]:	Указатель на нулевой элемент массива в который
  * 								будет записано крайнее значение оценки вектора
  * 								скорости в СК сопровождающего трехгранника (NED)
- * 								
+ *
  * @return  None
  */
 void
@@ -262,7 +313,7 @@ VPE_API_GetVelEstimate_NED(
  * @param[out] 	posEstimate[3]:	Указатель на нулевой элемент массива в который
  * 								будет записано крайнее значение оценки вектора
  * 								местоположения в связанной с Землей СК (ECEF)
- * 												
+ *
  * @return  None
  */
 void
@@ -287,7 +338,7 @@ VPE_API_GetPosEstimate_ECEF(
  * 						скорости и вектора местоположения данные
  * @param[in]    lat:    Текущая широта
  * @param[in]    lon:    Текущая долгота
- * 
+ *
  * @return  None
  */
 void
@@ -317,7 +368,7 @@ VPE_API_UpdateLatitudeAndLongitude(
  * @param[in]	acc_NED_a[3]:	Указатель на нулевой элемент массива
  * 								вектора линейных ускорений в СК
  * 								сопровождающего трехгранника (NED)
- * 								
+ *
  * @return  None
  */
 static void
@@ -329,6 +380,11 @@ VPE_UpdateVelosityEstimate(
 	size_t i = 0;
 	for (i = 0; i < VPE_ECEF_AXIS_NUMB; i++)
 	{
+		/* Компенсация погрешностей акселерометров */
+		acc_NED_a[i] +=
+			p_s->velosityInNED_s.velBias_a[i];
+
+		/* Интегрирование ускорений для получения скорости */
 		p_s->velosityInNED_s.vel_a[i] +=
 			NINTEG_Trapz(
 				&p_s->velosityInNED_s.NINTEG_acc2Vel_s_a[i],
@@ -346,7 +402,7 @@ VPE_UpdateVelosityEstimate(
  * @param[out]	*p_s:	Указатель на структуру в которой содержатся
  * 						необходимые для обновления параметров вектора
  * 						скорости и вектора местоположения данные
- * 						
+ *
  * @return  None
  */
 static void
@@ -368,6 +424,11 @@ VPE_UpdatePositionEstimate(
 	size_t i = 0;
 	for (i = 0; i < VPE_ECEF_AXIS_NUMB; i++)
 	{
+		/* Компенсация погрешностей первой производной от местоположения */
+		velosityInECEF_a[i] +=
+			p_s->positionInECEF_s.posBias_a[i];
+
+		/* Интегрирование скорости для получения местоположения */
 		p_s->positionInECEF_s.pos_a[i] +=
 			NINTEG_Trapz(
 				&p_s->positionInECEF_s.NINTEG_vel2Pos_s_a[i],
@@ -389,7 +450,7 @@ VPE_UpdatePositionEstimate(
  * 									измерения вектора скорости от GNSS модуля
  * 									в системе координат сопровождающего
  * 									трехгранника (NED)
- * 									
+ *
  * @return  None
  */
 static void
@@ -397,11 +458,29 @@ VPE_CorrectVelosityEstimate(
 	vpe_all_data_s *p_s,
 	__VPE_FPT__ velByGNSS_NED_a[])
 {
+	/* Переменная для записи скорректированного вектора */
+	__VPE_FPT__ correctedVect_a[3];
+
 	VPE_CorrectVector(
 		p_s->velosityInNED_s.vel_a,
 		velByGNSS_NED_a,
 		p_s->velosityInNED_s.compFilt_val,
-		p_s->velosityInNED_s.vel_a);
+		correctedVect_a);
+
+	/* Нахождение разницы между скорректированным и предсказанным вектором */
+	size_t i;
+	for (i = 0u; i < VPE_ECEF_AXIS_NUMB; i++)
+	{
+		p_s->velosityInNED_s.velBias_a[i] +=
+			(correctedVect_a[i]
+			 - p_s->velosityInNED_s.vel_a[i]) * p_s->velosityInNED_s.velBiasCorrCoeff;
+	}
+
+	/* Копирование в структуру скорректированного вектора */
+	memcpy(
+		(void*) p_s->velosityInNED_s.vel_a,
+		correctedVect_a,
+		sizeof(p_s->velosityInNED_s.vel_a));
 }
 
 /*-------------------------------------------------------------------------*//**
@@ -418,7 +497,7 @@ VPE_CorrectVelosityEstimate(
  * 										измерения вектора местоположения от
  * 										GNSS модуля в системе координат,
  * 										связанной с Землёй (ECEF)
- * 										
+ *
  * @return  None
  */
 static void
@@ -426,11 +505,28 @@ VPE_CorrectPositionEstimate(
 	vpe_all_data_s *p_s,
 	__VPE_FPT__ posByGNSS_ECEF_a[])
 {
+	/* Переменная для записи скорректированного вектора */
+	__VPE_FPT__ correctedVect_a[3];
+
 	VPE_CorrectVector(
 		p_s->positionInECEF_s.pos_a,
 		posByGNSS_ECEF_a,
 		p_s->positionInECEF_s.compFilt_val,
-		p_s->positionInECEF_s.pos_a);
+		correctedVect_a);
+
+	/* Нахождение разницы между скорректированным и предсказанным вектором */
+	size_t i;
+	for (i = 0u; i < VPE_ECEF_AXIS_NUMB; i++)
+	{
+		p_s->positionInECEF_s.posBias_a[i] +=
+				(correctedVect_a[i] - p_s->positionInECEF_s.pos_a[i])
+				* p_s->positionInECEF_s.posBiasCorrCoeff;
+	}
+
+	memcpy(
+		(void*) p_s->positionInECEF_s.pos_a,
+		(void*) correctedVect_a,
+		sizeof(p_s->positionInECEF_s.pos_a));
 }
 
 /*-------------------------------------------------------------------------*//**
@@ -448,7 +544,7 @@ VPE_CorrectPositionEstimate(
  * 				            Если коэффициент равен 1, то вектор измерений не учитывается.
  * @param[out]  filtered_a[3]: 	Указатель на нулевой элемент массива в
  * 								который будет записано скорректированное значение вектора
- * 								
+ *
  * @return  None
  */
 static void
@@ -485,7 +581,7 @@ VPE_CorrectVector(
  * 									vect_NED_a в ECEF СК
  * @param[in]  	lat:	Текущая широта
  * @param[in]   lon:	Текущая долгота
- * 
+ *
  * @return  None
  */
 static void
